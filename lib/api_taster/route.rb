@@ -95,7 +95,7 @@ module ApiTaster
       end
 
       def missing_definitions
-        routes.select { |route| undefined_route?(route) }
+        routes.select { |route| undefined_similar_routes?(route) }
       end
 
       private
@@ -103,6 +103,20 @@ module ApiTaster
       def undefined_route?(route)
         r = params_for(route)
         r.is_a?(Hash) && r.has_key?(:undefined)
+      end
+
+      def undefined_similar_routes?(route)
+        similar_routes = similar_routes route
+        similar_routes.all? { |r| undefined_route? r }
+      end
+
+      def similar_routes(route)
+        case
+        when ['PATCH', 'PUT'].include?(route[:verb])
+          routes.select { |r| ['PATCH', 'PUT'].include?(r[:verb]) && r[:path] == route[:path] }
+        else
+          [route]
+        end
       end
 
       def discover_rack_app(app)

@@ -116,19 +116,39 @@ module ApiTaster
       end
     end
 
-    it "#missing_definitions and #defined_definitions" do
-      routes = ActionDispatch::Routing::RouteSet.new
-      routes.draw do
-        get 'awesome_route' => 'awesome#route'
-      end
-      Rails.application.stub(:routes).and_return(routes)
-      ApiTaster.routes do
-        # nothing
-      end
-      Route.map_routes
+    context "#missing_definitions and #defined_definitions" do
+      let(:path) { '/awesome_route' }
+      let(:routes) { Route.routes }
 
-      Route.missing_definitions.first[:path].should == '/awesome_route'
-      Route.defined_definitions.should == Route.routes - Route.missing_definitions
+      subject { Route }
+
+      before do
+        stub_routes = ActionDispatch::Routing::RouteSet.new
+        stub_routes.draw do
+          get 'awesome_route' => 'awesome#route'
+          put 'awesome_route' => 'awesome#route'
+          patch 'awesome_route' => 'awesome#route'
+        end
+        Rails.application.stub(:routes).and_return(stub_routes)
+      end
+
+      context 'when routes are not defined' do
+        before do
+          Route.map_routes
+        end
+
+        its(:missing_definitions) { should eq routes }
+        its(:defined_definitions) { should be_blank }
+      end
+
+      context 'when routes are defined' do
+        before do
+          Route.map_routes "#{Rails.root}/lib/api_tasters/route"
+        end
+
+        its(:missing_definitions) { should eq Array.wrap Route.find_by_verb_and_path(:get, path) }
+        its(:defined_definitions) { should eq Array.wrap Route.find_by_verb_and_path(:patch, path) }
+      end
     end
 
     context "private methods" do
